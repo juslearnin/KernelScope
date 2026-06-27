@@ -2,13 +2,12 @@ package collector
 
 import (
 	"bufio"
+	"fmt"
+	"kernelscope/models"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"fmt"
-
-	"kernelscope/models"
 )
 
 func CollectProcesses() ([]models.Process, error) {
@@ -16,6 +15,8 @@ func CollectProcesses() ([]models.Process, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	tcpConnections := readTCPConnections()
 
 	var processes []models.Process
 
@@ -34,6 +35,8 @@ func CollectProcesses() ([]models.Process, error) {
 			continue
 		}
 
+		process.Connections = matchConnections(process.OpenFiles, tcpConnections)
+
 		processes = append(processes, process)
 	}
 
@@ -41,40 +44,40 @@ func CollectProcesses() ([]models.Process, error) {
 }
 
 func readProcessStatus(pid int) (models.Process, error) {
-    statusPath := filepath.Join("/proc", strconv.Itoa(pid), "status")
+	statusPath := filepath.Join("/proc", strconv.Itoa(pid), "status")
 
-    file, err := os.Open(statusPath)
-    if err != nil {
-        return models.Process{}, err
-    }
-    defer file.Close()
+	file, err := os.Open(statusPath)
+	if err != nil {
+		return models.Process{}, err
+	}
 
-    process := models.Process{PID: pid}
+	defer file.Close()
 
-    // 🚨 MOVE THESE THREE LINES UP HERE (Outside and before the text scanner loop)
-    process.Cmdline = readCmdline(pid)
-    process.CPUTime = readCPUTime(pid)
-    process.OpenFiles = readFileDescriptors(pid)
-    fmt.Printf("=== PID %d -> %d open files tracked ===\n", pid, len(process.OpenFiles))
+	process := models.Process{PID: pid}
 
-    scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        line := scanner.Text()
-        switch {
-        case strings.HasPrefix(line, "Name:"):
-            process.Name = cleanValue(line, "Name:")
-        case strings.HasPrefix(line, "State:"):
-            process.State = cleanValue(line, "State:")
-        case strings.HasPrefix(line, "PPid:"):
-            process.PPID = parseIntValue(line, "PPid:")
-        case strings.HasPrefix(line, "Threads:"):
-            process.Threads = parseIntValue(line, "Threads:")
-        case strings.HasPrefix(line, "VmRSS:"):
-            process.MemoryKB = parseMemoryKB(line)
-        }
-    }
+	process.Cmdline = readCmdline(pid)
+	process.CPUTime = readCPUTime(pid)
+	process.OpenFiles = readFileDescriptors(pid)
+	fmt.Printf("=== PID %d -> %d open files tracked ===\n", pid, len(process.OpenFiles))
 
-    return process, scanner.Err()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		switch {
+		case strings.HasPrefix(line, "Name:"):
+			process.Name = cleanValue(line, "Name:")
+		case strings.HasPrefix(line, "State:"):
+			process.State = cleanValue(line, "State:")
+		case strings.HasPrefix(line, "PPid:"):
+			process.PPID = parseIntValue(line, "PPid:")
+		case strings.HasPrefix(line, "Threads:"):
+			process.Threads = parseIntValue(line, "Threads:")
+		case strings.HasPrefix(line, "VmRSS:"):
+			process.MemoryKB = parseMemoryKB(line)
+		}
+	}
+
+	return process, scanner.Err()
 }
 
 func readCmdline(pid int) string {
@@ -138,38 +141,37 @@ func parseMemoryKB(line string) int {
 	num, _ := strconv.Atoi(parts[0])
 	return num
 }
+
 func readFileDescriptors(pid int) []models.FileDescriptor {
-    fdPath := filepath.Join("/proc", strconv.Itoa(pid), "fd")
-    
-    // 1. CHANGE THIS LINE: Always initialize to a clean, empty slice
-    descriptors := make([]models.FileDescriptor, 0)
+	fdPath := filepath.Join("/proc", strconv.Itoa(pid), "fd")
 
-    entries, err := os.ReadDir(fdPath)
-    if err != nil {
-        // 2. CHANGE THIS LINE: Return the empty slice instead of nil
-        return descriptors 
-    }
+	descriptors := make([]models.FileDescriptor, 0)
 
-    for _, entry := range entries {
-        fd, err := strconv.Atoi(entry.Name())
-        if err != nil {
-            continue
-        }
-        
-        linkPath := filepath.Join("/proc", strconv.Itoa(pid), "fd", strconv.Itoa(fd))
-        target, err := os.Readlink(linkPath)
-        if err != nil {
-            continue
-        }
-        
-        descriptors = append(descriptors, models.FileDescriptor{
-            FD:     fd,
-            Target: target,
-            Type:   detectFDType(target),
-        })
-    }
+	entries, err := os.ReadDir(fdPath)
+	if err != nil {
+		return descriptors
+	}
 
-    return descriptors
+	for _, entry := range entries {
+		fd, err := strconv.Atoi(entry.Name())
+		if err != nil {
+			continue
+		}
+
+		linkPath := filepath.Join("/proc", strconv.Itoa(pid), "fd", strconv.Itoa(fd))
+		target, err := os.Readlink(linkPath)
+		if err != nil {
+			continue
+		}
+
+		descriptors = append(descriptors, models.FileDescriptor{
+			FD:     fd,
+			Target: target,
+			Type:   detectFDType(target),
+		})
+	}
+
+	return descriptors
 }
 
 func detectFDType(target string) string {
@@ -190,3 +192,15 @@ func detectFDType(target string) string {
 		return "unknown"
 	}
 }
+
+func extractSocketInode(target string) string {
+	if !strings.HasPrefix(target, "socket:[") {
+		return ""
+	}
+
+	inode := strings.TrimPrefix(target, "socket:[")
+	inode = strings.TrimSuffix(inode, "]")
+
+	return inode
+}
+

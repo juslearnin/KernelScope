@@ -17,4 +17,5 @@ type Process struct {
 	CPUTime    uint64           `json:"cpuTime"`
 	CPUPercent float64          `json:"cpuPercent"`
 	OpenFiles  []FileDescriptor `json:"openFiles"`
+	Connections []NetworkConnection `json:"connections"`
 }
