@@ -365,6 +365,86 @@ CPU ${process.cpuPercent.toFixed(2)}%  │  TH ${process.threads}`,
         </section>
       </section>
 
+      <section className="infoSection inspectorSection">
+        <div className="sectionHeader">
+          <span>04</span>
+          <h2>Process Inspector</h2>
+        </div>
+
+        {!selectedProcess ? (
+          <div className="emptyInspector">
+            Click any node in the graph above to inspect files, sockets and live
+            network connections.
+          </div>
+        ) : (
+          <div className="inspector">
+            <div className="processMain">
+              <h3>{getLabel(selectedProcess)}</h3>
+              <p>
+                <b>PID:</b> {selectedProcess.pid}
+              </p>
+              <p>
+                <b>PPID:</b> {selectedProcess.ppid}
+              </p>
+              <p>
+                <b>State:</b> {selectedProcess.state}
+              </p>
+              <p>
+                <b>CPU:</b> {selectedProcess.cpuPercent.toFixed(2)}%
+              </p>
+              <p>
+                <b>RAM:</b> {Math.round(selectedProcess.memoryKB / 1024)} MB
+              </p>
+              <p>
+                <b>Threads:</b> {selectedProcess.threads}
+              </p>
+            </div>
+
+            <div>
+              <h3>
+                Network Connections ({selectedProcess.connections?.length || 0})
+              </h3>
+
+              <div className="listStack">
+                {(selectedProcess.connections || []).map((connection) => (
+                  <div className="connectionRow" key={connection.inode}>
+                    <b>🌐 {connection.state}</b>
+                    <p>
+                      {connection.localAddress}:{connection.localPort}
+                    </p>
+                    {connection.state !== "LISTEN" && (
+                      <p>
+                        → {connection.remoteAddress}:{connection.remotePort}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3>Open Resources ({selectedProcess.openFiles?.length || 0})</h3>
+
+              <div className="listStack">
+                {(selectedProcess.openFiles || []).slice(0, 70).map((file) => (
+                  <div
+                    className="resourceRow"
+                    key={`${selectedProcess.pid}-${file.fd}`}
+                  >
+                    <span>{getResourceIcon(file.type)}</span>
+                    <div>
+                      <b>FD {file.fd}</b>
+                      <p>{file.target}</p>
+                      <small>{file.type}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
       <section className="infoSection">
         <div className="sectionHeader">
           <span>01</span>
@@ -458,70 +538,6 @@ CPU ${process.cpuPercent.toFixed(2)}%  │  TH ${process.threads}`,
             </article>
           ))}
         </div>
-      </section>
-
-      <section className="infoSection">
-        <div className="sectionHeader">
-          <span>04</span>
-          <h2>Process Inspector</h2>
-        </div>
-
-        {!selectedProcess ? (
-          <div className="emptyInspector">
-            Click any node in the graph above to inspect files, sockets and live
-            network connections.
-          </div>
-        ) : (
-          <div className="inspector">
-            <div className="processMain">
-              <h3>{getLabel(selectedProcess)}</h3>
-              <p><b>PID:</b> {selectedProcess.pid}</p>
-              <p><b>PPID:</b> {selectedProcess.ppid}</p>
-              <p><b>State:</b> {selectedProcess.state}</p>
-              <p><b>CPU:</b> {selectedProcess.cpuPercent.toFixed(2)}%</p>
-              <p><b>RAM:</b> {Math.round(selectedProcess.memoryKB / 1024)} MB</p>
-              <p><b>Threads:</b> {selectedProcess.threads}</p>
-            </div>
-
-            <div>
-              <h3>
-                Network Connections ({selectedProcess.connections?.length || 0})
-              </h3>
-
-              <div className="listStack">
-                {(selectedProcess.connections || []).map((connection) => (
-                  <div className="connectionRow" key={connection.inode}>
-                    <b>🌐 {connection.state}</b>
-                    <p>{connection.localAddress}:{connection.localPort}</p>
-                    {connection.state !== "LISTEN" && (
-                      <p>→ {connection.remoteAddress}:{connection.remotePort}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3>Open Resources ({selectedProcess.openFiles?.length || 0})</h3>
-
-              <div className="listStack">
-                {(selectedProcess.openFiles || []).slice(0, 70).map((file) => (
-                  <div
-                    className="resourceRow"
-                    key={`${selectedProcess.pid}-${file.fd}`}
-                  >
-                    <span>{getResourceIcon(file.type)}</span>
-                    <div>
-                      <b>FD {file.fd}</b>
-                      <p>{file.target}</p>
-                      <small>{file.type}</small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </section>
     </main>
   );
