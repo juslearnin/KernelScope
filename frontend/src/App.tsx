@@ -83,9 +83,7 @@ function buildTreeLayout(processes: Process[]) {
   const childrenMap = new Map<number, Process[]>();
 
   for (const process of processes) {
-    if (!childrenMap.has(process.ppid)) {
-      childrenMap.set(process.ppid, []);
-    }
+    if (!childrenMap.has(process.ppid)) childrenMap.set(process.ppid, []);
     childrenMap.get(process.ppid)!.push(process);
   }
 
@@ -103,9 +101,7 @@ function buildTreeLayout(processes: Process[]) {
     y++;
 
     for (const child of children) {
-      if (processMap.has(child.pid)) {
-        place(child.pid, depth + 1);
-      }
+      if (processMap.has(child.pid)) place(child.pid, depth + 1);
     }
   }
 
@@ -161,7 +157,7 @@ function App() {
         if (!response.ok) throw new Error("Failed to fetch timeline");
 
         const data = await response.json();
-        if (!cancelled) setEvents([...data].reverse());
+        if (!cancelled) setEvents([...data].reverse().slice(0, 200));
       } catch (error) {
         console.error("KernelScope timeline fetch error:", error);
       } finally {
@@ -179,6 +175,47 @@ function App() {
       cancelled = true;
       clearInterval(processInterval);
       clearInterval(timelineInterval);
+    };
+  }, []);
+
+  useEffect(() => {
+    const socket = new WebSocket("ws://localhost:8080/ws");
+
+    socket.onopen = () => {
+      console.log("KernelScope WebSocket connected");
+    };
+
+    socket.onmessage = (message) => {
+      try {
+        const event: TimelineEvent = JSON.parse(message.data);
+
+        setEvents((prev) => {
+          const alreadyExists = prev.some(
+            (oldEvent) =>
+              oldEvent.timestamp === event.timestamp &&
+              oldEvent.pid === event.pid &&
+              oldEvent.type === event.type
+          );
+
+          if (alreadyExists) return prev;
+
+          return [event, ...prev].slice(0, 200);
+        });
+      } catch (error) {
+        console.error("KernelScope WebSocket parse error:", error);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("KernelScope WebSocket disconnected");
+    };
+
+    socket.onerror = (error) => {
+      console.error("KernelScope WebSocket error:", error);
+    };
+
+    return () => {
+      socket.close();
     };
   }, []);
 
@@ -438,24 +475,12 @@ CPU ${process.cpuPercent.toFixed(2)}%  │  TH ${process.threads}`,
           <div className="inspector">
             <div className="processMain">
               <h3>{getLabel(selectedProcess)}</h3>
-              <p>
-                <b>PID:</b> {selectedProcess.pid}
-              </p>
-              <p>
-                <b>PPID:</b> {selectedProcess.ppid}
-              </p>
-              <p>
-                <b>State:</b> {selectedProcess.state}
-              </p>
-              <p>
-                <b>CPU:</b> {selectedProcess.cpuPercent.toFixed(2)}%
-              </p>
-              <p>
-                <b>RAM:</b> {Math.round(selectedProcess.memoryKB / 1024)} MB
-              </p>
-              <p>
-                <b>Threads:</b> {selectedProcess.threads}
-              </p>
+              <p><b>PID:</b> {selectedProcess.pid}</p>
+              <p><b>PPID:</b> {selectedProcess.ppid}</p>
+              <p><b>State:</b> {selectedProcess.state}</p>
+              <p><b>CPU:</b> {selectedProcess.cpuPercent.toFixed(2)}%</p>
+              <p><b>RAM:</b> {Math.round(selectedProcess.memoryKB / 1024)} MB</p>
+              <p><b>Threads:</b> {selectedProcess.threads}</p>
             </div>
 
             <div>
@@ -467,13 +492,9 @@ CPU ${process.cpuPercent.toFixed(2)}%  │  TH ${process.threads}`,
                 {(selectedProcess.connections || []).map((connection) => (
                   <div className="connectionRow" key={connection.inode}>
                     <b>🌐 {connection.state}</b>
-                    <p>
-                      {connection.localAddress}:{connection.localPort}
-                    </p>
+                    <p>{connection.localAddress}:{connection.localPort}</p>
                     {connection.state !== "LISTEN" && (
-                      <p>
-                        → {connection.remoteAddress}:{connection.remotePort}
-                      </p>
+                      <p>→ {connection.remoteAddress}:{connection.remotePort}</p>
                     )}
                   </div>
                 ))}
