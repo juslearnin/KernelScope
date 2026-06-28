@@ -2,25 +2,27 @@
 
 ### Real-Time Linux Process Observability Platform
 
+<img width="851" height="442" alt="image" src="https://github.com/user-attachments/assets/c64b0ca6-1fd0-41aa-84a0-9924810480d3" />
+
 > **Think of it as "Google Maps for your Linux Operating System."**
 >
 > KernelScope is a real-time Linux observability platform that visualizes processes, system resources, open files, network connections, and process lifecycles by directly parsing the Linux `/proc` filesystem. It combines low-level systems programming with an interactive React-based visualization layer to help developers understand how an operating system behaves in real time.
 
 ---
 
-<img width="851" height="442" alt="image" src="https://github.com/user-attachments/assets/c64b0ca6-1fd0-41aa-84a0-9924810480d3" />
 
 
 
-<img width="812" height="338" alt="image" src="https://github.com/user-attachments/assets/ddbaec6c-4917-4c37-9594-3a0c668d18ed" />
 
 
 
-<img width="802" height="404" alt="image" src="https://github.com/user-attachments/assets/f29f6c07-13cc-4520-bb78-9daf217d4f3c" />
 
 
 
-<img width="941" height="405" alt="image" src="https://github.com/user-attachments/assets/57792ae5-2115-408d-8592-2346b32912b3" />
+
+
+
+
 
 
 
@@ -45,6 +47,10 @@ KernelScope combines these views into a single interactive platform that answers
 * How are all processes related?
 
 Instead of reading raw terminal output, KernelScope presents the operating system as an interconnected live graph.
+
+
+<img width="802" height="404" alt="image" src="https://github.com/user-attachments/assets/f29f6c07-13cc-4520-bb78-9daf217d4f3c" />
+
 
 ---
 
@@ -153,7 +159,7 @@ KernelScope uses WebSockets to stream events directly to connected clients.
 Unlike polling, updates are pushed immediately when the operating system changes.
 
 ---
-
+<img width="812" height="338" alt="image" src="https://github.com/user-attachments/assets/ddbaec6c-4917-4c37-9594-3a0c668d18ed" />
 # System Architecture
 
 ```text
@@ -225,7 +231,7 @@ models/
 Each module has a single responsibility, making the architecture modular and extensible.
 
 ---
-
+<img width="941" height="405" alt="image" src="https://github.com/user-attachments/assets/57792ae5-2115-408d-8592-2346b32912b3" />
 # Learning Outcomes
 
 KernelScope was built as a deep dive into Linux internals and observability systems.
